@@ -1,3 +1,71 @@
+<!--<manifest xmlns:android="http://schemas.android.com/apk/res/android"-->
+<!--    package="com.example.fleet_route">-->
+
+<!--    &lt;!&ndash; Permissions for Internet and Location &ndash;&gt;-->
+<!--    <uses-permission android:name="android.permission.INTERNET"/>-->
+<!--    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>-->
+<!--    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>-->
+<!--    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>-->
+
+
+<!--    <application-->
+<!--        android:label="fleet_route"-->
+<!--        android:name="${applicationName}"-->
+<!--        android:icon="@mipmap/ic_launcher">-->
+
+<!--        <meta-data-->
+<!--            android:name="com.google.android.geo.API_KEY"-->
+<!--            android:value="AIzaSyDMX2Xl8EAjMSy1J9iXO9W26E86X5Jlg9k"-->
+<!--            />-->
+<!--        <meta-data-->
+<!--            android:name="MAPBOX_ACCESS_TOKEN"-->
+<!--            android:value="@string/mapbox_access_token" />-->
+
+
+
+<!--        <activity-->
+<!--            android:name="com.eopeter.fluttermapboxnavigation.activity.NavigationActivity"-->
+<!--            android:exported="false"-->
+<!--            android:launchMode="singleTop"-->
+<!--            android:taskAffinity=""-->
+<!--            android:theme="@style/LaunchTheme"-->
+<!--            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"-->
+<!--            android:hardwareAccelerated="true"-->
+<!--            android:windowSoftInputMode="adjustResize">-->
+
+<!--            &lt;!&ndash; Flutter Embedding Metadata &ndash;&gt;-->
+<!--            <meta-data-->
+<!--                android:name="io.flutter.embedding.android.NormalTheme"-->
+<!--                android:resource="@style/NormalTheme"/>-->
+
+<!--            <intent-filter>-->
+<!--                <action android:name="android.intent.action.MAIN"/>-->
+<!--                <category android:name="android.intent.category.LAUNCHER"/>-->
+<!--            </intent-filter>-->
+<!--        </activity>-->
+
+<!--        &lt;!&ndash; Required for Flutter Plugin Registration &ndash;&gt;-->
+<!--        <meta-data-->
+<!--            android:name="flutterEmbedding"-->
+<!--            android:value="2"/>-->
+
+<!--    </application>-->
+
+<!--    &lt;!&ndash; Required for text processing &ndash;&gt;-->
+<!--    <queries>-->
+<!--        <intent>-->
+<!--            <action android:name="android.intent.action.PROCESS_TEXT"/>-->
+<!--            <data android:mimeType="text/plain"/>-->
+
+<!--        </intent>-->
+
+<!--            <package android:name="com.google.android.apps.maps"/>-->
+
+
+<!--    </queries>-->
+
+<!--</manifest>-->
+
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.fleet_route">
 
@@ -7,41 +75,37 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
 
-
     <application
         android:label="fleet_route"
         android:name="${applicationName}"
+
         android:icon="@mipmap/ic_launcher">
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyDMX2Xl8EAjMSy1J9iXO9W26E86X5Jlg9k"
-            />
+            android:value="AIzaSyDMX2Xl8EAjMSy1J9iXO9W26E86X5Jlg9k"/>
         <meta-data
             android:name="MAPBOX_ACCESS_TOKEN"
-            android:value="@string/mapbox_access_token" />
-
-
+            android:value="@string/mapbox_access_token"/>
 
         <activity
             android:name=".MainActivity"
-            android:exported="true"
-            android:launchMode="singleTop"
-            android:taskAffinity=""
-            android:theme="@style/LaunchTheme"
-            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
-            android:hardwareAccelerated="true"
-            android:windowSoftInputMode="adjustResize">
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
 
             <!-- Flutter Embedding Metadata -->
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme"/>
+        </activity>
 
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
-            </intent-filter>
+        <!-- Navigation Activity -->
+        <activity
+            android:name="com.eopeter.fluttermapboxnavigation.activity.NavigationActivity"
+            android:exported="true">
         </activity>
 
         <!-- Required for Flutter Plugin Registration -->
@@ -56,12 +120,8 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
-
         </intent>
-
-            <package android:name="com.google.android.apps.maps"/>
-
-
+        <package android:name="com.google.android.apps.maps"/>
     </queries>
 
 </manifest>

@@ -13,6 +13,8 @@ class SelectTruckPage extends StatefulWidget {
 class _SelectTruckPageState extends State<SelectTruckPage> {
   bool _isLoading = false;
   List<Map<String, dynamic>> _trucks = [];
+  Map<String, dynamic>? _selectedTruckDetails;
+  Map<String, dynamic>? _driverDetails;
 
   @override
   void initState() {
@@ -20,6 +22,7 @@ class _SelectTruckPageState extends State<SelectTruckPage> {
     _fetchAvailableTrucks();
   }
 
+  /// Fetch available trucks that are free
   Future<void> _fetchAvailableTrucks() async {
     setState(() => _isLoading = true);
 
@@ -119,6 +122,59 @@ class _SelectTruckPageState extends State<SelectTruckPage> {
     }
   }
 
+  /// Fetch truck and driver details
+  Future<void> _fetchTruckAndDriverDetails(int truckId) async {
+    setState(() => _isLoading = true);
+
+    try {
+      // Fetch truck details
+      final truckResponse = await Supabase.instance.client
+          .from('truck')
+          .select()
+          .eq('truck_id', truckId)
+          .single();
+
+      // Fetch driver details assigned to this truck
+      final driverResponse = await Supabase.instance.client
+          .from('driver')
+          .select('driver_id, license_number, status, rating')
+          .eq('assigned_truck_id', truckId)
+          .single();
+
+      if (driverResponse == null) {
+        throw Exception("No driver assigned to this truck.");
+      }
+
+      final String driverId = driverResponse['driver_id'];
+
+      // Fetch driver details from Users table
+      final userResponse = await Supabase.instance.client
+          .from('Users')
+          .select('name, mobile')
+          .eq('user_id', driverId)
+          .single();
+
+
+      setState(() {
+        _selectedTruckDetails = truckResponse;
+        _driverDetails = {
+          'name': userResponse['name'],
+          'mobile': userResponse['mobile'],
+          'license_number': driverResponse['license_number'],
+          'status': driverResponse['status'],
+          'rating': driverResponse['rating'],
+        };
+        _isLoading = false;
+      });
+
+      _showTruckDetailsDialog();
+    } catch (e) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error fetching details: $e')));
+    }
+  }
+
+  /// Assign truck to the delivery
   Future<void> _assignTruck(int truckId) async {
     setState(() => _isLoading = true);
 
@@ -186,12 +242,14 @@ class _SelectTruckPageState extends State<SelectTruckPage> {
         'updated_at': timestamp,
       });
 
+
       // Update truck capacity and status
       remainingCapacity -= deliveryCapacity;
 
       await supabase.from('truck').update({
         'capacity': remainingCapacity,
         'status': remainingCapacity > 0 ? 'Free' : 'Busy',
+
         'updated_at': timestamp,
       }).eq('truck_id', truckId);
 
@@ -202,7 +260,9 @@ class _SelectTruckPageState extends State<SelectTruckPage> {
         ),
       );
 
+
       _fetchAvailableTrucks(); // Refresh truck list
+
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -214,6 +274,7 @@ class _SelectTruckPageState extends State<SelectTruckPage> {
       setState(() => _isLoading = false);
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -233,7 +294,9 @@ class _SelectTruckPageState extends State<SelectTruckPage> {
               title: Text("Truck ID: ${truck['truck_id']}"),
               subtitle: Text("Capacity: ${truck['capacity']} kg"),
               trailing: Icon(Icons.local_shipping, color: Colors.blue),
+
               onTap: () => _showTruckDetailsDialog(truck['truck_id']),
+
             ),
           );
         },

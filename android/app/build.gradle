@@ -20,7 +20,7 @@ android {
 
     defaultConfig {
         applicationId "com.example.fleet_route"
-        minSdk 21  // Adjust according to Flutter's minimum SDK requirements
+        minSdk 31  // Adjust according to Flutter's minimum SDK requirements
         targetSdk 34  // Ensure this matches your compileSdk
         versionCode 1
         versionName "1.0"
