@@ -6,7 +6,6 @@ import 'driver_page.dart';
 import 'maps_page.dart';
 import 'select_truck_page.dart';
 
-
 class HomePage extends StatefulWidget {
   @override
   _HomePageState createState() => _HomePageState();
@@ -220,9 +219,25 @@ class _HomePageState extends State<HomePage> {
                   ),
                   child: Text("Open Maps"),
                 ),
+                SizedBox(height: 10), // Space between buttons
+                ElevatedButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => AddDeliveryPage()), // Navigate to AddDeliveryPage
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green, // Set button color
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  ),
+                  child: Text(
+                    "Add Delivery",
+                    style: TextStyle(fontSize: 16, color: Colors.white),
+                  ),
+                ),
               ],
             ),
           ),
+
         ],
       ),
     );
