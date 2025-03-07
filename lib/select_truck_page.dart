@@ -39,7 +39,86 @@ class _SelectTruckPageState extends State<SelectTruckPage> {
       });
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error fetching trucks: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching trucks: $e')),
+      );
+    }
+  }
+
+  Future<void> _showTruckDetailsDialog(int truckId) async {
+    setState(() => _isLoading = true);
+
+    try {
+      final supabase = Supabase.instance.client;
+
+      // Fetch truck details
+      final truckResponse = await supabase
+          .from('truck')
+          .select('capacity, status')
+          .eq('truck_id', truckId)
+          .single();
+
+      // Fetch driver details assigned to this truck
+      final driverResponse = await supabase
+          .from('driver')
+          .select('name, phone, email, license_number, rating')
+          .eq('assigned_truck_id', truckId)
+          .maybeSingle();
+
+      setState(() => _isLoading = false);
+
+      // Show dialog box with truck and driver details
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text("Truck & Driver Details"),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("🚛 Truck ID: $truckId"),
+                Text("🔋 Capacity: ${truckResponse['capacity']} kg"),
+                Text("📌 Status: ${truckResponse['status']}"),
+                SizedBox(height: 10),
+                driverResponse != null
+                    ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("👤 Driver: ${driverResponse['name']}"),
+                    Text("📞 Phone: ${driverResponse['phone']}"),
+                    Text("📧 Email: ${driverResponse['email']}"),
+                    Text("🚗 License: ${driverResponse['license_number']}"),
+                    Text("⭐ Rating: ${driverResponse['rating'] ?? 'N/A'}/5"),
+                  ],
+                )
+                    : Text("❌ No driver assigned to this truck"),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text("Cancel"),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _assignTruck(truckId);
+                },
+                child: Text("Assign"),
+              ),
+            ],
+          );
+        },
+      );
+    } catch (e) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error fetching truck details: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -100,10 +179,62 @@ class _SelectTruckPageState extends State<SelectTruckPage> {
     setState(() => _isLoading = true);
 
     try {
+      final supabase = Supabase.instance.client;
       final timestamp = DateTime.now().toUtc().toIso8601String();
 
+      // Fetch the delivery's capacity
+      final deliveryResponse = await supabase
+          .from('delivery')
+          .select('capacity')
+          .eq('delivery_id', widget.deliveryId)
+          .single();
+
+      double deliveryCapacity = (deliveryResponse['capacity'] ?? 0.0).toDouble();
+
+      // Fetch the current truck capacity
+      final truckResponse = await supabase
+          .from('truck')
+          .select('capacity')
+          .eq('truck_id', truckId)
+          .single();
+
+      double truckCapacity = (truckResponse['capacity'] ?? 0.0).toDouble();
+
+      // Fetch total assigned capacity for this truck
+      final assignedDeliveries = await supabase
+          .from('delivery_truck_mapping')
+          .select('delivery_id')
+          .eq('truck_id', truckId)
+          .eq('assignment_status', 'Active');
+
+      double totalAssignedCapacity = 0.0;
+
+      for (var delivery in assignedDeliveries) {
+        final deliveryData = await supabase
+            .from('delivery')
+            .select('capacity')
+            .eq('delivery_id', delivery['delivery_id'])
+            .single();
+
+        totalAssignedCapacity += (deliveryData['capacity'] ?? 0.0);
+      }
+
+      double remainingCapacity = truckCapacity - totalAssignedCapacity;
+
+      // Check if the truck has enough capacity
+      if (remainingCapacity < deliveryCapacity) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Truck $truckId does not have enough capacity!"),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() => _isLoading = false);
+        return;
+      }
+
       // Insert into delivery_truck_mapping
-      await Supabase.instance.client.from('delivery_truck_mapping').insert({
+      await supabase.from('delivery_truck_mapping').insert({
         'delivery_id': widget.deliveryId,
         'truck_id': truckId,
         'assignment_status': 'Active',
@@ -111,62 +242,39 @@ class _SelectTruckPageState extends State<SelectTruckPage> {
         'updated_at': timestamp,
       });
 
-      // Update truck status to 'Busy'
-      await Supabase.instance.client.from('truck').update({
-        'status': 'Busy',
+
+      // Update truck capacity and status
+      remainingCapacity -= deliveryCapacity;
+
+      await supabase.from('truck').update({
+        'capacity': remainingCapacity,
+        'status': remainingCapacity > 0 ? 'Free' : 'Busy',
+
         'updated_at': timestamp,
       }).eq('truck_id', truckId);
 
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Truck $truckId assigned successfully!")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Truck $truckId assigned successfully!"),
+          backgroundColor: Colors.green,
+        ),
+      );
 
-      _fetchAvailableTrucks();
+
+      _fetchAvailableTrucks(); // Refresh truck list
+
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error assigning truck: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error assigning truck: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
-  /// Show truck & driver details in a dialog
-  void _showTruckDetailsDialog() {
-    if (_selectedTruckDetails == null || _driverDetails == null) return;
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text("Truck & Driver Details"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text("🚛 Truck ID: ${_selectedTruckDetails!['truck_id']}"),
-              Text("📍 Location: (${_selectedTruckDetails!['latitude']}, ${_selectedTruckDetails!['longitude']})"),
-              Text("⚡ Fuel Level: ${_selectedTruckDetails!['fuel_level']}%"),
-              Text("🛠 Last Service: ${_selectedTruckDetails!['last_service_date']}"),
-              Divider(),
-              Text("👤 Driver: ${_driverDetails!['name']}"),
-              Text("📞 Mobile: ${_driverDetails!['mobile']}"),
-              Text("🚗 License No: ${_driverDetails!['license_number']}"),
-              Text("⭐ Rating: ${_driverDetails!['rating']}"),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text("Close"),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _assignTruck(_selectedTruckDetails!['truck_id']);
-              },
-              child: Text("Assign Truck"),
-            ),
-          ],
-        );
-      },
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -184,9 +292,11 @@ class _SelectTruckPageState extends State<SelectTruckPage> {
             margin: EdgeInsets.all(8),
             child: ListTile(
               title: Text("Truck ID: ${truck['truck_id']}"),
-              subtitle: Text("Capacity: ${truck['capacity']} tons"),
+              subtitle: Text("Capacity: ${truck['capacity']} kg"),
               trailing: Icon(Icons.local_shipping, color: Colors.blue),
-              onTap: () => _fetchTruckAndDriverDetails(truck['truck_id']),
+
+              onTap: () => _showTruckDetailsDialog(truck['truck_id']),
+
             ),
           );
         },

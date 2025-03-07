@@ -23,7 +23,10 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _logout(BuildContext context) async {
     await Supabase.instance.client.auth.signOut();
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => LoginPage()));
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => LoginPage()),
+    );
   }
 
   Future<void> _fetchUserDeliveries() async {
@@ -31,7 +34,9 @@ class _HomePageState extends State<HomePage> {
 
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('No user found. Please login again.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No user found. Please login again.')),
+      );
       return;
     }
 
@@ -48,7 +53,9 @@ class _HomePageState extends State<HomePage> {
       });
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error fetching deliveries: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching deliveries: $e')),
+      );
     }
   }
 
@@ -57,7 +64,9 @@ class _HomePageState extends State<HomePage> {
 
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('No user found. Please login again.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No user found. Please login again.')),
+      );
       return;
     }
 
@@ -71,22 +80,34 @@ class _HomePageState extends State<HomePage> {
       setState(() => _isLoading = false);
 
       if (response == null || response['role'] == null) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('User role not found!')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('User role not found!')),
+        );
         return;
       }
 
       String role = response['role'];
 
       if (role == "Manager") {
-        Navigator.push(context, MaterialPageRoute(builder: (context) => AddDeliveryPage()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => AddDeliveryPage()),
+        );
       } else if (role == "Driver") {
-        Navigator.push(context, MaterialPageRoute(builder: (context) => DriverPage()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => DriverPage()),
+        );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Role not recognized!')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Role not recognized!')),
+        );
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error fetching role: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching role: $e')),
+      );
     }
   }
 
@@ -109,7 +130,10 @@ class _HomePageState extends State<HomePage> {
       body: Column(
         children: [
           SizedBox(height: 10),
-          Text("Your Deliveries", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          Text(
+            "Your Deliveries",
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
           Expanded(
             child: _isLoading
                 ? Center(child: CircularProgressIndicator())
@@ -123,7 +147,8 @@ class _HomePageState extends State<HomePage> {
 
                 String truckStatus = "No Truck Assigned";
                 if (truckAssignment != null && truckAssignment.isNotEmpty) {
-                  truckStatus = "Truck ID: ${truckAssignment[0]['truck_id']} (${truckAssignment[0]['assignment_status']})";
+                  truckStatus =
+                  "Truck ID: ${truckAssignment[0]['truck_id']} (${truckAssignment[0]['assignment_status']})";
                 }
 
                 return Card(
@@ -134,10 +159,20 @@ class _HomePageState extends State<HomePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text("To: ${delivery['destination_address']}"),
-                        Text("Status: ${delivery['current_status']}", style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text(
+                          "Status: ${delivery['current_status']}",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         Text("Scheduled Pickup: ${delivery['scheduled_pickup_time']}"),
                         Text("Scheduled Delivery: ${delivery['scheduled_delivery_time']}"),
-                        Text(truckStatus, style: TextStyle(fontSize: 16, color: Colors.blueAccent)),
+                        Text(
+                          "Capacity: ${delivery['capacity']} kg",
+                          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.redAccent),
+                        ),
+                        Text(
+                          truckStatus,
+                          style: TextStyle(fontSize: 16, color: Colors.blueAccent),
+                        ),
                       ],
                     ),
                     trailing: Icon(Icons.local_shipping, color: Colors.blue),
@@ -164,7 +199,10 @@ class _HomePageState extends State<HomePage> {
                 ),
                 SizedBox(height: 10),
                 ElevatedButton(
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => MapsPage())),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => MapsPage()),
+                  ),
                   child: Text("Open Maps"),
                 ),
               ],
