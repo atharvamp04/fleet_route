@@ -13,13 +13,13 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  bool _isLoading = false;
+  bool _isLoading = true;
   List<Map<String, dynamic>> _deliveries = [];
 
   @override
   void initState() {
     super.initState();
-    _fetchUserDeliveries();
+    _checkUserRole(); // Check user role before loading the home page
   }
 
   Future<void> _logout(BuildContext context) async {
@@ -28,6 +28,65 @@ class _HomePageState extends State<HomePage> {
       context,
       MaterialPageRoute(builder: (context) => LoginPage()),
     );
+  }
+
+  Future<void> _checkUserRole() async {
+    final user = Supabase.instance.client.auth.currentUser;
+
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No user found. Please login again.')),
+      );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => LoginPage()),
+      );
+      return;
+    }
+
+    try {
+      final response = await Supabase.instance.client
+          .from('Users')
+          .select('role')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+      if (response == null || response['role'] == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('User role not found!')),
+        );
+        return;
+      }
+
+      String role = response['role'];
+
+      if (role == "Driver") {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DriverPage(userId: user.id),
+          ),
+        );
+
+        return;
+      }
+
+      if (role == "Manager") {
+        _fetchUserDeliveries();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Role not recognized!')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching role: $e')),
+      );
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   Future<void> _fetchUserDeliveries() async {
@@ -60,60 +119,14 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<void> _navigateBasedOnRole(BuildContext context) async {
-    setState(() => _isLoading = true);
-
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No user found. Please login again.')),
-      );
-      return;
-    }
-
-    try {
-      final response = await Supabase.instance.client
-          .from('Users')
-          .select('role')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-      setState(() => _isLoading = false);
-
-      if (response == null || response['role'] == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('User role not found!')),
-        );
-        return;
-      }
-
-      String role = response['role'];
-
-      if (role == "Manager") {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => AddDeliveryPage()),
-        );
-      } else if (role == "Driver") {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => DriverPage()),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Role not recognized!')),
-        );
-      }
-    } catch (e) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching role: $e')),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Home'),
@@ -181,7 +194,8 @@ class _HomePageState extends State<HomePage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => SelectTruckPage(deliveryId: delivery['delivery_id']),
+                          builder: (context) =>
+                              SelectTruckPage(deliveryId: delivery['delivery_id'],),
                         ),
                       );
                     },
@@ -195,8 +209,8 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               children: [
                 ElevatedButton(
-                  onPressed: () => _navigateBasedOnRole(context),
-                  child: Text("Go to Role Page"),
+                  onPressed: () => _fetchUserDeliveries(),
+                  child: Text("Refresh Deliveries"),
                 ),
                 SizedBox(height: 10),
                 ElevatedButton(
@@ -206,6 +220,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                   child: Text("Open Maps"),
                 ),
+                
                 SizedBox(height: 10),
                 ElevatedButton(
                   onPressed: () => Navigator.push(
@@ -213,10 +228,26 @@ class _HomePageState extends State<HomePage> {
                     MaterialPageRoute(builder: (context) => TrackTruckPage()),
                   ),
                   child: Text("Track Truck"),
+
+                SizedBox(height: 10), // Space between buttons
+                ElevatedButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => AddDeliveryPage()), // Navigate to AddDeliveryPage
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green, // Set button color
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  ),
+                  child: Text(
+                    "Add Delivery",
+                    style: TextStyle(fontSize: 16, color: Colors.white),
+                  ),
                 ),
               ],
             ),
           ),
+
         ],
       ),
     );
