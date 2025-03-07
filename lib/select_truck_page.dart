@@ -196,7 +196,6 @@ class _SelectTruckPageState extends State<SelectTruckPage> {
       );
     }
   }
-
   /// Assign truck to a delivery
   Future<void> _assignTruck(int truckId) async {
     setState(() => _isLoading = true);
