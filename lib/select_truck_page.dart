@@ -42,6 +42,83 @@ class _SelectTruckPageState extends State<SelectTruckPage> {
     }
   }
 
+  Future<void> _showTruckDetailsDialog(int truckId) async {
+    setState(() => _isLoading = true);
+
+    try {
+      final supabase = Supabase.instance.client;
+
+      // Fetch truck details
+      final truckResponse = await supabase
+          .from('truck')
+          .select('capacity, status')
+          .eq('truck_id', truckId)
+          .single();
+
+      // Fetch driver details assigned to this truck
+      final driverResponse = await supabase
+          .from('driver')
+          .select('name, phone, email, license_number, rating')
+          .eq('assigned_truck_id', truckId)
+          .maybeSingle();
+
+      setState(() => _isLoading = false);
+
+      // Show dialog box with truck and driver details
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text("Truck & Driver Details"),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("🚛 Truck ID: $truckId"),
+                Text("🔋 Capacity: ${truckResponse['capacity']} kg"),
+                Text("📌 Status: ${truckResponse['status']}"),
+                SizedBox(height: 10),
+                driverResponse != null
+                    ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("👤 Driver: ${driverResponse['name']}"),
+                    Text("📞 Phone: ${driverResponse['phone']}"),
+                    Text("📧 Email: ${driverResponse['email']}"),
+                    Text("🚗 License: ${driverResponse['license_number']}"),
+                    Text("⭐ Rating: ${driverResponse['rating'] ?? 'N/A'}/5"),
+                  ],
+                )
+                    : Text("❌ No driver assigned to this truck"),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text("Cancel"),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _assignTruck(truckId);
+                },
+                child: Text("Assign"),
+              ),
+            ],
+          );
+        },
+      );
+    } catch (e) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error fetching truck details: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   Future<void> _assignTruck(int truckId) async {
     setState(() => _isLoading = true);
 
@@ -156,7 +233,7 @@ class _SelectTruckPageState extends State<SelectTruckPage> {
               title: Text("Truck ID: ${truck['truck_id']}"),
               subtitle: Text("Capacity: ${truck['capacity']} kg"),
               trailing: Icon(Icons.local_shipping, color: Colors.blue),
-              onTap: () => _assignTruck(truck['truck_id']),
+              onTap: () => _showTruckDetailsDialog(truck['truck_id']),
             ),
           );
         },
