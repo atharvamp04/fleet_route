@@ -24,11 +24,13 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       if (response.user != null) {
-        // Fetch the user role from the 'Users' table
+        String userId = response.user!.id;
+
+        // Fetch user role from 'Users' table
         final userData = await Supabase.instance.client
             .from('Users')
             .select('role')
-            .eq('user_id', response.user!.id)
+            .eq('user_id', userId)
             .maybeSingle();
 
         if (userData == null) {
@@ -40,13 +42,19 @@ class _LoginPageState extends State<LoginPage> {
         // Redirect based on role
         if (role == "Manager") {
           Navigator.pushReplacement(
-              context, MaterialPageRoute(builder: (context) => AddDeliveryPage()));
+            context,
+            MaterialPageRoute(builder: (context) => AddDeliveryPage()),
+          );
         } else if (role == "Driver") {
           Navigator.pushReplacement(
-              context, MaterialPageRoute(builder: (context) => DriverPage()));
+            context,
+            MaterialPageRoute(builder: (context) => DriverPage(userId: userId)),
+          );
         } else {
           throw Exception("Invalid role");
         }
+      } else {
+        throw Exception("Invalid login credentials");
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -66,6 +74,7 @@ class _LoginPageState extends State<LoginPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Title
             Text(
               "Welcome Back! 👋",
               style: TextStyle(
@@ -131,7 +140,9 @@ class _LoginPageState extends State<LoginPage> {
             Center(
               child: TextButton(
                 onPressed: () => Navigator.push(
-                    context, MaterialPageRoute(builder: (context) => SignUpPage())),
+                  context,
+                  MaterialPageRoute(builder: (context) => SignUpPage()),
+                ),
                 child: Text(
                   "Don't have an account? Sign Up",
                   style: TextStyle(fontSize: 16, color: Color(0xFF17CE92)),

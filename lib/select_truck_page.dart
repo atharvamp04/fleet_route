@@ -13,38 +13,113 @@ class SelectTruckPage extends StatefulWidget {
 class _SelectTruckPageState extends State<SelectTruckPage> {
   bool _isLoading = false;
   List<Map<String, dynamic>> _trucks = [];
-  Map<String, dynamic>? _selectedTruckDetails;
-  Map<String, dynamic>? _driverDetails;
+  int _requiredCapacity = 0; // Capacity needed for this delivery
 
   @override
   void initState() {
     super.initState();
-    _fetchAvailableTrucks();
+    _fetchDeliveryCapacity();
   }
 
-  /// Fetch available trucks that are free
-  Future<void> _fetchAvailableTrucks() async {
+  /// Fetch the required delivery capacity from the database
+  Future<void> _fetchDeliveryCapacity() async {
     setState(() => _isLoading = true);
 
     try {
       final response = await Supabase.instance.client
+          .from('delivery')
+          .select('capacity')
+          .eq('delivery_id', widget.deliveryId)
+          .single();
+
+      setState(() {
+        _requiredCapacity = response['capacity'];
+      });
+
+      _fetchAvailableTrucks(); // Fetch trucks after getting the required capacity
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching delivery capacity: $e')),
+      );
+    }
+  }
+
+  /// Fetch available trucks with sufficient capacity
+  Future<void> _fetchAvailableTrucks() async {
+    setState(() => _isLoading = true);
+    try {
+      final supabase = Supabase.instance.client;
+
+      print("Fetching required capacity...");
+      final deliveryResponse = await supabase
+          .from('delivery')
+          .select('capacity')
+          .eq('delivery_id', widget.deliveryId)
+          .single();
+
+      print("Delivery Response: $deliveryResponse");
+
+      final int requiredCapacity = (deliveryResponse['capacity'] as num).toInt();
+      print("Required Capacity: $requiredCapacity");
+
+      print("Fetching trucks...");
+      final trucksResponse = await supabase
           .from('truck')
-          .select()
+          .select('truck_id, capacity, status')
           .eq('status', 'Free')
           .order('truck_id', ascending: true);
 
+      print("Trucks Response: $trucksResponse");
+
+      List<Map<String, dynamic>> availableTrucks = [];
+
+      for (var truck in trucksResponse) {
+        final int truckCapacity = (truck['capacity'] as num).toInt();
+        print("Checking Truck ID ${truck['truck_id']} with Capacity: $truckCapacity");
+
+        print("Fetching total package capacity for Truck ID ${truck['truck_id']}...");
+
+        // Use rpc() to call the custom SQL function
+        final packageResponse = await supabase
+            .rpc('sum_package_capacity', params: {'truck_id_param': truck['truck_id']});
+
+        print("Package Response for Truck ${truck['truck_id']}: $packageResponse");
+
+        final int totalPackageCapacity = ((packageResponse ?? 0) as num).toInt();
+        print("Total Assigned Package Capacity: $totalPackageCapacity");
+
+        final int remainingCapacity = truckCapacity - totalPackageCapacity;
+        print("Remaining Capacity for Truck ${truck['truck_id']}: $remainingCapacity");
+
+        if (remainingCapacity >= requiredCapacity) {
+          truck['remaining_capacity'] = remainingCapacity;
+          availableTrucks.add(truck);
+        }
+      }
+
       setState(() {
-        _trucks = response;
+        _trucks = availableTrucks;
         _isLoading = false;
       });
+
+      print("Available Trucks: $_trucks");
+
     } catch (e) {
       setState(() => _isLoading = false);
+      print("Error fetching trucks: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error fetching trucks: $e')),
       );
     }
   }
 
+
+
+
+
+
+
+  /// Show truck & driver details in a dialog
   Future<void> _showTruckDetailsDialog(int truckId) async {
     setState(() => _isLoading = true);
 
@@ -122,59 +197,7 @@ class _SelectTruckPageState extends State<SelectTruckPage> {
     }
   }
 
-  /// Fetch truck and driver details
-  Future<void> _fetchTruckAndDriverDetails(int truckId) async {
-    setState(() => _isLoading = true);
-
-    try {
-      // Fetch truck details
-      final truckResponse = await Supabase.instance.client
-          .from('truck')
-          .select()
-          .eq('truck_id', truckId)
-          .single();
-
-      // Fetch driver details assigned to this truck
-      final driverResponse = await Supabase.instance.client
-          .from('driver')
-          .select('driver_id, license_number, status, rating')
-          .eq('assigned_truck_id', truckId)
-          .single();
-
-      if (driverResponse == null) {
-        throw Exception("No driver assigned to this truck.");
-      }
-
-      final String driverId = driverResponse['driver_id'];
-
-      // Fetch driver details from Users table
-      final userResponse = await Supabase.instance.client
-          .from('Users')
-          .select('name, mobile')
-          .eq('user_id', driverId)
-          .single();
-
-
-      setState(() {
-        _selectedTruckDetails = truckResponse;
-        _driverDetails = {
-          'name': userResponse['name'],
-          'mobile': userResponse['mobile'],
-          'license_number': driverResponse['license_number'],
-          'status': driverResponse['status'],
-          'rating': driverResponse['rating'],
-        };
-        _isLoading = false;
-      });
-
-      _showTruckDetailsDialog();
-    } catch (e) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error fetching details: $e')));
-    }
-  }
-
-  /// Assign truck to the delivery
+  /// Assign truck to a delivery
   Future<void> _assignTruck(int truckId) async {
     setState(() => _isLoading = true);
 
@@ -182,50 +205,17 @@ class _SelectTruckPageState extends State<SelectTruckPage> {
       final supabase = Supabase.instance.client;
       final timestamp = DateTime.now().toUtc().toIso8601String();
 
-      // Fetch the delivery's capacity
-      final deliveryResponse = await supabase
-          .from('delivery')
-          .select('capacity')
-          .eq('delivery_id', widget.deliveryId)
-          .single();
+      // Fetch the driver assigned to this truck
+      final driverResponse = await supabase
+          .from('driver')
+          .select('driver_id')
+          .eq('assigned_truck_id', truckId)
+          .maybeSingle();
 
-      double deliveryCapacity = (deliveryResponse['capacity'] ?? 0.0).toDouble();
-
-      // Fetch the current truck capacity
-      final truckResponse = await supabase
-          .from('truck')
-          .select('capacity')
-          .eq('truck_id', truckId)
-          .single();
-
-      double truckCapacity = (truckResponse['capacity'] ?? 0.0).toDouble();
-
-      // Fetch total assigned capacity for this truck
-      final assignedDeliveries = await supabase
-          .from('delivery_truck_mapping')
-          .select('delivery_id')
-          .eq('truck_id', truckId)
-          .eq('assignment_status', 'Active');
-
-      double totalAssignedCapacity = 0.0;
-
-      for (var delivery in assignedDeliveries) {
-        final deliveryData = await supabase
-            .from('delivery')
-            .select('capacity')
-            .eq('delivery_id', delivery['delivery_id'])
-            .single();
-
-        totalAssignedCapacity += (deliveryData['capacity'] ?? 0.0);
-      }
-
-      double remainingCapacity = truckCapacity - totalAssignedCapacity;
-
-      // Check if the truck has enough capacity
-      if (remainingCapacity < deliveryCapacity) {
+      if (driverResponse == null || driverResponse.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Truck $truckId does not have enough capacity!"),
+            content: Text("No driver assigned to this truck."),
             backgroundColor: Colors.red,
           ),
         );
@@ -233,33 +223,38 @@ class _SelectTruckPageState extends State<SelectTruckPage> {
         return;
       }
 
-      // Insert into delivery_truck_mapping
-      await supabase.from('delivery_truck_mapping').insert({
+      final String driverId = driverResponse['driver_id'];
+
+      // Insert into delivery_truck_mapping with driver_id
+      final deliveryTruckMappingResponse = await supabase
+          .from('delivery_truck_mapping')
+          .insert({
         'delivery_id': widget.deliveryId,
         'truck_id': truckId,
+        'driver_id': driverId, // Store driver_id here
         'assignment_status': 'Active',
+        'assigned_at': timestamp,
+        'updated_at': timestamp,
+      })
+          .select('mapping_id')
+          .single();
+
+      final int deliveryTruckMappingId = deliveryTruckMappingResponse['mapping_id'];
+
+      // Insert into driver_mapping table
+      await supabase.from('driver_mapping').insert({
+        'driver_id': driverId,
+        'delivery_truck_mapping_id': deliveryTruckMappingId,
         'assigned_at': timestamp,
         'updated_at': timestamp,
       });
 
-
-      // Update truck capacity and status
-      remainingCapacity -= deliveryCapacity;
-
-      await supabase.from('truck').update({
-        'capacity': remainingCapacity,
-        'status': remainingCapacity > 0 ? 'Free' : 'Busy',
-
-        'updated_at': timestamp,
-      }).eq('truck_id', truckId);
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Truck $truckId assigned successfully!"),
+          content: Text("Truck $truckId with Driver $driverId assigned successfully!"),
           backgroundColor: Colors.green,
         ),
       );
-
 
       _fetchAvailableTrucks(); // Refresh truck list
 
@@ -283,7 +278,7 @@ class _SelectTruckPageState extends State<SelectTruckPage> {
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
           : _trucks.isEmpty
-          ? Center(child: Text("No available trucks"))
+          ? Center(child: Text("No available trucks meeting capacity requirements"))
           : ListView.builder(
         itemCount: _trucks.length,
         itemBuilder: (context, index) {
@@ -292,15 +287,20 @@ class _SelectTruckPageState extends State<SelectTruckPage> {
             margin: EdgeInsets.all(8),
             child: ListTile(
               title: Text("Truck ID: ${truck['truck_id']}"),
-              subtitle: Text("Capacity: ${truck['capacity']} kg"),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Total Capacity: ${truck['capacity']} kg"),  // Total capacity
+                  Text("Remaining Capacity: ${truck['remaining_capacity']} kg"),  // Updated to show remaining capacity
+                ],
+              ),
               trailing: Icon(Icons.local_shipping, color: Colors.blue),
-
               onTap: () => _showTruckDetailsDialog(truck['truck_id']),
-
             ),
           );
         },
-      ),
+      )
+
     );
   }
 }
