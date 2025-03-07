@@ -209,34 +209,22 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               children: [
                 ElevatedButton(
-                  onPressed: () => _fetchUserDeliveries(),
-                  child: Text("Refresh Deliveries"),
-                ),
-                SizedBox(height: 10),
-                ElevatedButton(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => MapsPage()),
-                  ),
-                  child: Text("Open Maps"),
-                ),
-                
-                SizedBox(height: 10),
-                ElevatedButton(
                   onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => TrackTruckPage()),
                   ),
                   child: Text("Track Truck"),
+                ),
 
                 SizedBox(height: 10), // Space between buttons
+
                 ElevatedButton(
                   onPressed: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => AddDeliveryPage()), // Navigate to AddDeliveryPage
+                    MaterialPageRoute(builder: (context) => AddDeliveryPage()),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green, // Set button color
+                    backgroundColor: Colors.green,
                     padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   ),
                   child: Text(
