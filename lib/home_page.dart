@@ -5,6 +5,7 @@ import 'add_delivery.dart';
 import 'driver_page.dart';
 import 'maps_page.dart';
 import 'select_truck_page.dart';
+import 'track_truck.dart'; // Import TrackTruckPage
 
 class HomePage extends StatefulWidget {
   @override
@@ -204,6 +205,14 @@ class _HomePageState extends State<HomePage> {
                     MaterialPageRoute(builder: (context) => MapsPage()),
                   ),
                   child: Text("Open Maps"),
+                ),
+                SizedBox(height: 10),
+                ElevatedButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => TrackTruckPage()),
+                  ),
+                  child: Text("Track Truck"),
                 ),
               ],
             ),

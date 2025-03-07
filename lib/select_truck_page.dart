@@ -167,7 +167,6 @@ class _SelectTruckPageState extends State<SelectTruckPage> {
         _isLoading = false;
       });
 
-      _showTruckDetailsDialog();
     } catch (e) {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error fetching details: $e')));
