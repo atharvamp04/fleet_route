@@ -110,7 +110,7 @@ class _SignUpPageState extends State<SignUpPage> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: _signUp,
-                style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF17CE92)),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.lightBlue.shade200),
                 child: Text('Sign Up', style: TextStyle(fontSize: 18, color: Colors.white)),
               ),
             ),
@@ -119,7 +119,7 @@ class _SignUpPageState extends State<SignUpPage> {
             Center(
               child: TextButton(
                 onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => LoginPage())),
-                child: Text("Already have an account? Login", style: TextStyle(color: Color(0xFF17CE92))),
+                child: Text("Already have an account? Login", style: TextStyle(color: Colors.lightBlue.shade200)),
               ),
             ),
           ],

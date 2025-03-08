@@ -97,7 +97,7 @@ class _LoginPageState extends State<LoginPage> {
                 labelText: 'Email',
                 prefixIcon: Icon(Icons.email, color: Colors.grey),
                 focusedBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(color: Color(0xFF17CE92), width: 2),
+                  borderSide: BorderSide(color: Colors.lightBlue.shade200, width: 2),
                 ),
               ),
             ),
@@ -111,7 +111,7 @@ class _LoginPageState extends State<LoginPage> {
                 labelText: 'Password',
                 prefixIcon: Icon(Icons.lock, color: Colors.grey),
                 focusedBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(color: Color(0xFF17CE92), width: 2),
+                  borderSide: BorderSide(color: Colors.lightBlue.shade200, width: 2),
                 ),
               ),
             ),
@@ -123,7 +123,7 @@ class _LoginPageState extends State<LoginPage> {
               child: ElevatedButton(
                 onPressed: _isLoading ? null : _login,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF17CE92),
+                  backgroundColor: Colors.lightBlue.shade200,
                   padding: EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(50),
@@ -145,7 +145,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 child: Text(
                   "Don't have an account? Sign Up",
-                  style: TextStyle(fontSize: 16, color: Color(0xFF17CE92)),
+                  style: TextStyle(fontSize: 16, color: Colors.lightBlue.shade200),
                 ),
               ),
             ),
