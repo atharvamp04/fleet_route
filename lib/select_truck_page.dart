@@ -113,12 +113,6 @@ class _SelectTruckPageState extends State<SelectTruckPage> {
     }
   }
 
-
-
-
-
-
-
   /// Show truck & driver details in a dialog
   Future<void> _showTruckDetailsDialog(int truckId) async {
     setState(() => _isLoading = true);
@@ -269,37 +263,62 @@ class _SelectTruckPageState extends State<SelectTruckPage> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Select a Truck')),
+      backgroundColor: Colors.blue.shade50,
+      appBar: AppBar(
+        title: Text('Select a Truck  🚛', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.lightBlue.shade200, // Stylish navbar
+      ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator(color: Colors.blue))
           : _trucks.isEmpty
-          ? Center(child: Text("No available trucks meeting capacity requirements"))
+          ? Center(
+        child: Text(
+          "No available trucks meeting capacity requirements",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.grey),
+          textAlign: TextAlign.center,
+        ),
+      )
           : ListView.builder(
         itemCount: _trucks.length,
         itemBuilder: (context, index) {
           final truck = _trucks[index];
+          final bool isAvailable = truck['status'] == 'Free';
+
           return Card(
-            margin: EdgeInsets.all(8),
+            margin: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            elevation: 4, // Adds a nice shadow
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             child: ListTile(
-              title: Text("Truck ID: ${truck['truck_id']}"),
+              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              leading: Icon(Icons.local_shipping, color: isAvailable ? Colors.green : Colors.red, size: 30),
+              title: Text(
+                "🚛 Truck ID: ${truck['truck_id']}",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               subtitle: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("Total Capacity: ${truck['capacity']} kg"),  // Total capacity
-                  Text("Remaining Capacity: ${truck['remaining_capacity']} kg"),  // Updated to show remaining capacity
+                  Text("🔋 Total Capacity: ${truck['capacity']} kg"),
+                  Text("📦 Remaining Capacity: ${truck['remaining_capacity']} kg"),
                 ],
               ),
-              trailing: Icon(Icons.local_shipping, color: Colors.blue),
-              onTap: () => _showTruckDetailsDialog(truck['truck_id']),
+              trailing: ElevatedButton.icon(
+                onPressed: () => _showTruckDetailsDialog(truck['truck_id']),
+                icon: Icon(Icons.assignment, size: 20),
+                label: Text("Details"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
             ),
           );
         },
-      )
-
+      ),
     );
   }
 }

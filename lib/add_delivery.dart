@@ -97,7 +97,11 @@ class _AddDeliveryPageState extends State<AddDeliveryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Add Delivery'), backgroundColor: Colors.teal),
+        backgroundColor: Colors.blue.shade50,
+        appBar: AppBar(
+        title: Text('Add Delivery 📦', style: TextStyle(fontWeight: FontWeight.bold)),
+      backgroundColor: Colors.lightBlue.shade200, // Change this to any color you like
+        ),
       body: Padding(
         padding: EdgeInsets.all(16.0),
         child: Form(
@@ -170,7 +174,7 @@ class _AddDeliveryPageState extends State<AddDeliveryPage> {
               SizedBox(height: 20),
               ElevatedButton(
                 onPressed: _submitDelivery,
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.teal, padding: EdgeInsets.all(14)),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.lightBlue.shade200, padding: EdgeInsets.all(14)),
                 child: Text('Submit Delivery', style: TextStyle(fontSize: 18, color: Colors.white)),
               ),
             ],

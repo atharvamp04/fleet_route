@@ -16,6 +16,7 @@ class _TrackTruckPageState extends State<TrackTruckPage> {
   final String googleApiKey = "AIzaSyDMX2Xl8EAjMSy1J9iXO9W26E86X5Jlg9k"; // Replace with your key
 
   List<Marker> _markers = [];
+  List<Polyline> _routes = [];
   bool _isLoading = true;
   TruckInfo? _selectedTruck;
   LatLng? _managerLocation;
@@ -24,7 +25,7 @@ class _TrackTruckPageState extends State<TrackTruckPage> {
   void initState() {
     super.initState();
     _fetchData();
-    _getManagerLocation(); // Fetch manager location
+    _getManagerLocation();
   }
 
   Future<void> _fetchData() async {
@@ -38,6 +39,14 @@ class _TrackTruckPageState extends State<TrackTruckPage> {
           .select('truck_id, assignment_status, delivery(delivery_id, origin_address, destination_address)');
 
       Map<int, List<DeliveryInfo>> truckDeliveries = {};
+      List<Marker> markers = [];
+      List<Polyline> polylines = [];
+
+      // Define a set of colors for trucks
+      List<Color> routeColors = [Colors.red, Colors.blue, Colors.green, Colors.orange, Colors.purple];
+      Map<int, Color> truckRouteColors = {}; // Store assigned colors for each truck
+
+      int colorIndex = 0;
 
       for (var record in mappingResponse) {
         int truckId = record['truck_id'];
@@ -60,8 +69,6 @@ class _TrackTruckPageState extends State<TrackTruckPage> {
         }
       }
 
-      List<Marker> markers = [];
-
       for (var truck in truckResponse) {
         int truckId = truck['truck_id'];
         LatLng truckLocation = LatLng(truck['latitude'], truck['longitude']);
@@ -71,6 +78,13 @@ class _TrackTruckPageState extends State<TrackTruckPage> {
             truckDeliveries[truckId]!.any((d) => d.status == 'Active');
 
         Color truckColor = hasActiveDeliveries ? Colors.red : Colors.green;
+
+        // Assign a unique route color for this truck
+        if (!truckRouteColors.containsKey(truckId)) {
+          truckRouteColors[truckId] = routeColors[colorIndex % routeColors.length];
+          colorIndex++;
+        }
+        Color routeColor = truckRouteColors[truckId]!;
 
         markers.add(
           Marker(
@@ -117,11 +131,28 @@ class _TrackTruckPageState extends State<TrackTruckPage> {
                 ),
               );
             }
+
+            // 🚛 Fetch and draw route for each truck using its assigned color
+            if (delivery.originLatLng != null && delivery.destinationLatLng != null) {
+              List<LatLng> routeToPickup = await _getRoute(truckLocation, delivery.originLatLng!);
+              List<LatLng> routeToDestination = await _getRoute(delivery.originLatLng!, delivery.destinationLatLng!);
+
+              polylines.add(Polyline(
+                points: routeToPickup,
+                strokeWidth: 4.0,
+                color: routeColor, // Use assigned truck color
+              ));
+
+              polylines.add(Polyline(
+                points: routeToDestination,
+                strokeWidth: 4.0,
+                color: routeColor, // Use assigned truck color
+              ));
+            }
           }
         }
       }
 
-      // Add manager location marker
       if (_managerLocation != null) {
         markers.add(
           Marker(
@@ -135,6 +166,7 @@ class _TrackTruckPageState extends State<TrackTruckPage> {
 
       setState(() {
         _markers = markers;
+        _routes = polylines;
         _isLoading = false;
       });
     } catch (e) {
@@ -143,19 +175,44 @@ class _TrackTruckPageState extends State<TrackTruckPage> {
     }
   }
 
+  Future<List<LatLng>> _getRoute(LatLng start, LatLng end) async {
+    try {
+      final url = "https://maps.googleapis.com/maps/api/directions/json?"
+          "origin=${start.latitude},${start.longitude}"
+          "&destination=${end.latitude},${end.longitude}"
+          "&key=$googleApiKey";
+
+      final response = await http.get(Uri.parse(url));
+      final data = json.decode(response.body);
+
+      if (data['status'] == 'OK') {
+        List<LatLng> routePoints = [];
+        var steps = data['routes'][0]['legs'][0]['steps'];
+
+        for (var step in steps) {
+          var location = step['end_location'];
+          routePoints.add(LatLng(location['lat'], location['lng']));
+        }
+
+        return routePoints;
+      } else {
+        print("⚠️ Directions API Error: ${data['status']}");
+      }
+    } catch (e) {
+      print("❌ Route API Error: $e");
+    }
+    return [];
+  }
+
   Future<LatLng?> _getCoordinates(String address) async {
     try {
-      final url =
-          "https://maps.googleapis.com/maps/api/geocode/json?address=${Uri.encodeComponent(address)}&key=$googleApiKey";
-
+      final url = "https://maps.googleapis.com/maps/api/geocode/json?address=${Uri.encodeComponent(address)}&key=$googleApiKey";
       final response = await http.get(Uri.parse(url));
       final data = json.decode(response.body);
 
       if (data['status'] == 'OK') {
         final location = data['results'][0]['geometry']['location'];
         return LatLng(location['lat'], location['lng']);
-      } else {
-        print("⚠️ Google API Error: ${data['status']}");
       }
     } catch (e) {
       print("❌ API Error: $e");
@@ -170,7 +227,7 @@ class _TrackTruckPageState extends State<TrackTruckPage> {
       setState(() {
         _managerLocation = LatLng(position.latitude, position.longitude);
       });
-      _fetchData(); // Refresh map with manager location
+      _fetchData();
     } catch (e) {
       print("❌ GPS Error: $e");
     }
@@ -179,19 +236,22 @@ class _TrackTruckPageState extends State<TrackTruckPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Track Trucks')),
+        backgroundColor: Colors.blue.shade50,
+        appBar: AppBar(
+        title: Text('Track Trucks 🗺', style: TextStyle(fontWeight: FontWeight.bold)),
+          backgroundColor: Colors.lightBlue.shade200, // Change this to any color you like
+        ),
       body: Stack(
         children: [
           FlutterMap(
-            options: MapOptions(
-              center: _managerLocation ?? LatLng(19.0760, 72.8777), // Default Mumbai
-              zoom: 10.0,
-            ),
+            options: MapOptions(center: _managerLocation ?? LatLng(19.0760, 72.8777), zoom: 10.0),
             children: [
-              TileLayer(
-                urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                subdomains: ['a', 'b', 'c'],
-              ),
+              TileLayer(urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',subdomains: ['a', 'b', 'c'],),
+              // TileLayer(
+              //   urlTemplate: "https://maps.googleapis.com/maps/vt?x={x}&y={y}&z={z}&key=AIzaSyDMX2Xl8EAjMSy1J9iXO9W26E86X5Jlg9k",
+              //   subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+              // ),
+              PolylineLayer(polylines: _routes),
               MarkerLayer(markers: _markers),
             ],
           ),
@@ -201,7 +261,6 @@ class _TrackTruckPageState extends State<TrackTruckPage> {
       ),
     );
   }
-
   Widget _buildTruckDetailsCard(TruckInfo truck) {
     return Positioned(
       bottom: 20,
@@ -243,6 +302,7 @@ class _TrackTruckPageState extends State<TrackTruckPage> {
     );
   }
 }
+
 
 class TruckInfo {
   final int truckId;
